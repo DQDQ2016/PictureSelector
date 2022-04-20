@@ -16,6 +16,7 @@ import android.view.View
  */
 class PictureSelector: View{
 
+    private var redPointRadius = 15f
     private var maxItemCountPerLayer = 3
     private var pictureCount = 3
     private var itemWidth = 200
@@ -36,7 +37,10 @@ class PictureSelector: View{
         var x = margin
         var y = 50f
         for(i in 1..pictureCount){
-            items.add(SelectorItem(x,y,null,null))
+            if (i == 2)
+                items.add(SelectorItem(x,y,"",null))
+            else
+                items.add(SelectorItem(x,y,null,null))
             if(i % maxItemCountPerLayer == 0){
                 x = margin
                 y += itemWidth + 50f
@@ -49,20 +53,29 @@ class PictureSelector: View{
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
         var paint = Paint()
+        var redPointPaint = Paint()
         paint.color = Color.BLACK
+        redPointPaint.color = Color.RED
 
         for(item in items){
             with(item){
                 canvas?.drawRect(x,y, (x + itemWidth), (y + itemWidth),paint)
+                if (item.imgUrl != null){ //画X
+                    canvas?.drawCircle(x + itemWidth,y,redPointRadius,redPointPaint)
+                }
             }
         }
     }
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {
         for(item in items){
-            with(item){
-                if(event!!.x >= x && event!!.x <= x + itemWidth
-                    && event!!.y >= y && event!!.y <= y + itemWidth){
+            with(item) {
+                var redX = (x + itemWidth) - redPointRadius
+                var redY = y + redPointRadius
+                if (event!!.x in (redX..redX + redPointRadius)
+                    && event!!.x in (redY..redY + redPointRadius)) {
+                }else if(event!!.x in (x .. x + itemWidth)
+                    && event!!.y in (y .. y + itemWidth)){
                     itemClickEvent(item)
                 }
             }
@@ -77,6 +90,7 @@ class PictureSelector: View{
     }
 
     private fun itemCanCelClickEvent(item: SelectorItem){
+        Log.i("test","itemCanCelClickEvent ${item.x} ${item.y}")
 
     }
 }
