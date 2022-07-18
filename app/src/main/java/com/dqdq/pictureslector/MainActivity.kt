@@ -22,7 +22,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         pictureSelector = findViewById(R.id.pic_selector)
-        pictureSelector?.setPictureSelectListener {
+        pictureSelector?.setPictureSelectFun {
             openSysAlbum()
         }
 

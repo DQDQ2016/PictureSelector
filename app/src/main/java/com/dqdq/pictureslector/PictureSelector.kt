@@ -5,135 +5,102 @@ import android.content.Context
 import android.content.res.Resources
 import android.graphics.*
 import android.graphics.drawable.BitmapDrawable
-import android.os.Build
 import android.util.AttributeSet
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
-import androidx.annotation.RequiresApi
-import java.util.*
 
 /**
  * Created by DQDQ on 17/4/2022.
  */
-class PictureSelector : View {
+class PictureSelector @JvmOverloads constructor(
+    context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
+) : View(context, attrs, defStyleAttr) {
 
     private var redPointRadius = 20f
     private var maxItemCountPerLayer = 3 //每层最多item
-    private var pictureCount = 5 //总item
+    private var pictureCount = 6     //总item
     private var itemWidth = 200
-    private var itemTopMargin = 40
+    private var itemTopMargin = 50f
     private var cancelStrokeWidth = 4f
     private var xPadding = 10
-    private var items = PriorityQueue<SelectorItem>()
-    private lateinit var itemsPoint: MutableList<Array<Float>>
-    private var listener: (() -> Unit)? = null
-    private var picCount = 0 //记录已选择的图片数量
-    //todo 图片显示顺序逻辑
+    private var items = mutableListOf<SelectorItem>()
 
-    constructor(context: Context) : super(context)
+    private var pictureSelectFun: (() -> Unit)? = null
 
-    constructor(context: Context, attrs: AttributeSet? = null) : super(context, attrs) {
-
-    }
-
-    @RequiresApi(Build.VERSION_CODES.N)
     @SuppressLint("DrawAllocation")
-    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
-        super.onLayout(changed, left, top, right, bottom)
-
-        itemsPoint = MutableList(pictureCount) { arrayOf(0f, 0f) }
-
-        var compareByUrl = Comparator<SelectorItem> { t, t1 ->
-            Log.i("test", "compare")
-            if (t.imgUrl == "" && t1.imgUrl != "")
-                 1
-            else if (t.imgUrl != "" && t1.imgUrl == "")
-                -1
-            else if (t.imgUrl != "" && t1.imgUrl != "")
-                t.index - t1.index
-            else
-                t.index - t1.index
-        }
-
-        items = PriorityQueue<SelectorItem>(compareByUrl)
-
-        var margin: Float =
-            (width - (itemWidth * maxItemCountPerLayer)) / (2 + (maxItemCountPerLayer - 1)).toFloat()
-        var x = margin
-        var y = 50f
-        for (i in 1..pictureCount) {
-            itemsPoint[i - 1][0] = x
-            itemsPoint[i - 1][1] = y
-            items.add(SelectorItem(x, y, i, "", null))
-
-            if (i % maxItemCountPerLayer == 0 && i != 0) {
-                x = margin
-                y += itemWidth + 50f
-            } else {
-                x += itemWidth + margin
-            }
-        }
-    }
-
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
-        var paint = Paint()
+        val paint = Paint()
 
         for ((index, item) in items.withIndex()) {
-            item.x = itemsPoint[index][0]
-            item.y = itemsPoint[index][1]
             if (item.imgUrl != null && item.imgUrl != "") {
-                item.imgBitmap?.let {
-                    canvas?.drawBitmap(it, item.x, item.y, paint)
+                getItemXY(index).let { coordinate ->
+
+                    item.imgBitmap?.let {
+                        canvas?.drawBitmap(it, coordinate.first, coordinate.second, paint)
+                    }
+                    paint.color = Color.RED
+                    canvas?.drawCircle(coordinate.first + itemWidth
+                        , coordinate.second, redPointRadius, paint)
+                    paint.color = Color.WHITE//画X
+                    paint.strokeWidth = cancelStrokeWidth
+
+                    val redPointX = coordinate.first + itemWidth - redPointRadius
+                    val redPointY = coordinate.second - redPointRadius
+
+                    canvas?.drawLine(
+                        redPointX + xPadding,
+                        redPointY + xPadding,
+                        redPointX + redPointRadius * 2 - xPadding,
+                        redPointY + redPointRadius * 2 - xPadding,
+                        paint
+                    )
+                    canvas?.drawLine(
+                        redPointX + redPointRadius * 2 - xPadding,
+                        redPointY + xPadding,
+                        redPointX + xPadding,
+                        redPointY + redPointRadius * 2 - xPadding,
+                        paint
+                    )
                 }
-                paint.color = Color.RED
-                canvas?.drawCircle(item.x + itemWidth, item.y, redPointRadius, paint)
-                paint.color = Color.WHITE//画X
-                paint.strokeWidth = cancelStrokeWidth
+            }
+        }
 
-                var redPointX = item.x + itemWidth - redPointRadius
-                var redPointY = item.y - redPointRadius
-
-                canvas?.drawLine(
-                    redPointX + xPadding,
-                    redPointY + xPadding,
-                    redPointX + redPointRadius * 2 - xPadding,
-                    redPointY + redPointRadius * 2 - xPadding,
-                    paint
-                )
-                canvas?.drawLine(
-                    redPointX + redPointRadius * 2 - xPadding,
-                    redPointY + xPadding,
-                    redPointX + xPadding,
-                    redPointY + redPointRadius * 2 - xPadding,
-                    paint
-                )
-            } else {
+        if (items.size < pictureCount) {
+            Log.i("test", items.size.toString())
+            getItemXY(items.size).let {
                 val res: Resources = resources
-                var r = res.getDrawable(R.drawable.comment_addimg)
-                var db: BitmapDrawable = r as BitmapDrawable
-                var bgBitmap = zoomImage(db.bitmap,itemWidth,itemWidth)
+                val r = res.getDrawable(R.drawable.comment_addimg)
+                val db: BitmapDrawable = r as BitmapDrawable
+                val bgBitmap = db.bitmap.zoomImage(itemWidth, itemWidth)
                 paint.color = Color.BLACK
-                canvas?.drawBitmap(bgBitmap,item.x, item.y ,paint)
-                break
+                canvas?.drawBitmap(bgBitmap, it.first, it.second, paint)
             }
         }
     }
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {
-        for (item in items) {
-            var redX = (item.x + itemWidth) - redPointRadius
-            var redY = item.y - redPointRadius
-            if (event!!.x in (redX..redX + redPointRadius * 2) //
-                && event!!.y in (redY..redY + redPointRadius * 2)
-            ) {
-                itemCanCelClickEvent(item)
-                break
-            } else if (event!!.x in (item.x..item.x + itemWidth)
-                && event!!.y in (item.y..item.y + itemWidth) && item.imgUrl == "") {
-                itemClickEvent(item)
-                break
+        for ((index, item) in items.withIndex()) {
+            getItemXY(index).let {
+                val redX = (it.first + itemWidth) - redPointRadius
+                val redY = it.second - redPointRadius
+                if (event!!.x in (redX..redX + redPointRadius * 2) //
+                    && event!!.y in (redY..redY + redPointRadius * 2)
+                ) {
+                    itemCanCelClickEvent(item)
+                    return super.onTouchEvent(event)
+                }
+            }
+        }
+        if (items.size < pictureCount) {
+            getItemXY(items.size).let {
+                if (event!!.x in (it.first..it.first + itemWidth)
+                    && event!!.y in (it.second..it.second + itemWidth)
+                ) {
+                    itemClickEvent()
+                    return super.onTouchEvent(event)
+                }
             }
         }
 
@@ -141,77 +108,50 @@ class PictureSelector : View {
     }
 
     data class SelectorItem(
-        var x: Float,
-        var y: Float,
-        val index: Int,
         var imgUrl: String?,
         var imgBitmap: Bitmap?
     )
 
-    private fun itemClickEvent(item: SelectorItem) { //todo 选择图片
-        Log.i("test", "itemClickEvent ${item.x} ${item.y}")
-        listener?.invoke()
+    private fun itemClickEvent() {
+        pictureSelectFun?.invoke()
     }
 
     private fun itemCanCelClickEvent(item: SelectorItem) {
         items.remove(item)
-        item.imgUrl = ""
-        item.imgBitmap = null
-        items.add(item)
         invalidate()
-        Log.i("test", "itemCanCelClickEvent ${item.x} ${item.y}")
     }
 
-    fun setPictureSelectListener(listener: () -> Unit) {
-        this.listener = listener
+    fun setPictureSelectFun(f: () -> Unit) {
+        this.pictureSelectFun = f
     }
 
     fun pushPicture(url: String, pic: Bitmap) {
-        var item: SelectorItem? = null
-        for (v in items) {
-            if (v.imgUrl == null || v.imgUrl == "") {
-                item = v
-                break
-            }
-        }
-        if (item != null) {
-            var newBitmap = zoomImage(pic, itemWidth, itemWidth)
-            items.remove(item)
-            item.imgUrl = url
-            item.imgBitmap = newBitmap
-            var tempList = mutableListOf<SelectorItem>()
-            tempList.add(item)
-            tempList.addAll(items)
-            items.clear()
-            items.addAll(tempList)
-            invalidate()
-        }
+
+        val newBitmap = pic.zoomImage(itemWidth, itemWidth)
+        val item = SelectorItem(imgUrl = url, imgBitmap = newBitmap)
+        items.add(item)
+        invalidate()
+
         Log.i("test", "pushPicture")
+    }
+
+    private fun getItemXY(itemIndex: Int): Pair<Float, Float> {
+        val margin: Float =
+            (width - (itemWidth * maxItemCountPerLayer)) / (2 + (maxItemCountPerLayer - 1)).toFloat()
+        var x = margin
+        var y = itemTopMargin
+
+        val itemCountHeight = itemTopMargin + itemWidth
+        val itemCountWidth = itemWidth + margin
+
+        x += itemIndex % maxItemCountPerLayer * itemCountWidth
+        y += itemIndex / maxItemCountPerLayer * itemCountHeight
+
+        return Pair(x, y)
     }
 
     fun getPictures(): List<SelectorItem> {
         return items.toList()
-    }
-
-    private fun zoomImage(
-        bgImage: Bitmap, newWidth: Int,
-        newHeight: Int
-    ): Bitmap {
-        // 获取这个图片的宽和高
-        var width = bgImage.width;
-        var height = bgImage.height;
-        // 创建操作图片用的matrix对象
-        var matrix = Matrix()
-        // 计算宽高缩放率
-        var scaleWidth = (newWidth.toFloat()) / width;
-        var scaleHeight = (newHeight.toFloat()) / height;
-        // 缩放图片动作
-        matrix.postScale(scaleWidth, scaleHeight);
-        var bitmap = Bitmap.createBitmap(
-            bgImage, 0, 0, width,
-            height, matrix, true
-        );
-        return bitmap;
     }
 
 }
