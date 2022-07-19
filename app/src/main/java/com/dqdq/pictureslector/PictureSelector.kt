@@ -6,7 +6,6 @@ import android.content.res.Resources
 import android.graphics.*
 import android.graphics.drawable.BitmapDrawable
 import android.util.AttributeSet
-import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 
@@ -17,14 +16,14 @@ class PictureSelector @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
-    private var redPointRadius = 20f
-    private var maxItemCountPerLayer = 3 //每层最多item
-    private var pictureCount = 6     //总item
-    private var itemWidth = 200
-    private var itemTopMargin = 50f
-    private var cancelStrokeWidth = 4f
-    private var xPadding = 10
-    private var items = mutableListOf<SelectorItem>()
+    private val redPointRadius = 20f
+    private val maxItemCountPerLayer = 3 //每层最多item
+    private val pictureCount = 6     //总item
+    private val itemWidth = 200
+    private val topMargin = 50f
+    private val cancelStrokeWidth = 4f
+    private val xPadding = 10
+    private val items = mutableListOf<SelectorItem>()
 
     private var pictureSelectFun: (() -> Unit)? = null
 
@@ -68,7 +67,6 @@ class PictureSelector @JvmOverloads constructor(
         }
 
         if (items.size < pictureCount) {
-            Log.i("test", items.size.toString())
             getItemXY(items.size).let {
                 val res: Resources = resources
                 val r = res.getDrawable(R.drawable.comment_addimg)
@@ -126,23 +124,20 @@ class PictureSelector @JvmOverloads constructor(
     }
 
     fun pushPicture(url: String, pic: Bitmap) {
-
         val newBitmap = pic.zoomImage(itemWidth, itemWidth)
         val item = SelectorItem(imgUrl = url, imgBitmap = newBitmap)
         items.add(item)
         invalidate()
-
-        Log.i("test", "pushPicture")
     }
 
     private fun getItemXY(itemIndex: Int): Pair<Float, Float> {
-        val margin: Float =
+        val leftMargin: Float =
             (width - (itemWidth * maxItemCountPerLayer)) / (2 + (maxItemCountPerLayer - 1)).toFloat()
-        var x = margin
-        var y = itemTopMargin
+        var x = leftMargin
+        var y = topMargin
 
-        val itemCountHeight = itemTopMargin + itemWidth
-        val itemCountWidth = itemWidth + margin
+        val itemCountHeight = topMargin + itemWidth
+        val itemCountWidth = itemWidth + leftMargin
 
         x += itemIndex % maxItemCountPerLayer * itemCountWidth
         y += itemIndex / maxItemCountPerLayer * itemCountHeight
